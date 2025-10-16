@@ -33,7 +33,7 @@ const ctx = canvasElement.getContext("2d")
 canvasElement.height = Math.min(window.innerHeight, window.innerWidth);
 canvasElement.width = canvasElement.height;
 
-const resolution = 100;
+const resolution = 80;
 const pixelLen = canvasElement.width/resolution;
 
 let pixelGrid = {
@@ -105,33 +105,66 @@ function drawGrid() {
     }
 }
 
-let colorCounter = 0.1;
-let brushSize = 10;
-let rect = canvasElement.getBoundingClientRect();
-
-function draw (e) {
-    let clickX = Math.floor((e.clientX-rect.left)/pixelLen);
-    let clickY = Math.floor((e.clientY-rect.top)/pixelLen);
-
-    if (e.buttons == 1) {
-        for (let i=-brushSize; i<=brushSize; i++){
-            for (let j=-brushSize; j<=brushSize; j++){
-                if (!pixelGrid.getPixel(clickX+i, clickY+j) && i**2 + j**2 <= brushSize**2) {
-                pixelGrid.setPixel(clickX+i, clickY+j, hslToRgb(colorCounter, 1, .5) & 0xFFFFFF);
-                colorCounter+=1/30000;
-                colorCounter%=1;
-                }
-            }
+const brush = {
+    size: 4,
+    override: (x, y) => !pixelGrid.getPixel(x, y),
+    shape: (x, y) => x**2 + y**2 <= brush.size**2,
+    shapes: {
+        star: (x, y) => {
+            let starPoints = 5;
+            let r = Math.sqrt(x**2+y**2)
+            let th = Math.atan(y/x)
+            return r <= brush.size * ((Math.sin(starPoints*(th + 10*brush.iter))+starPoints)/starPoints)
         }
-    } else if (e.buttons == 2) {
-        for (let i=-brushSize; i<=brushSize; i++){
-            for (let j=-brushSize; j<=brushSize; j++){
-                pixelGrid.setPixel(clickX+i, clickY+j, 0);
-        }}
-    }
+    },
+    iter : 0
 }
 
-canvasElement.addEventListener("mousemove", (e)=>draw(e))
+brush.shape = brush.shapes.star;
+
+let relMouseCoord = {x: 0, y: 0}
+
+function draw (e) {
+    if (!isMouseDown) return;
+
+    let clickX = Math.floor(relMouseCoord.x/pixelLen);
+    let clickY = Math.floor(relMouseCoord.y/pixelLen);
+
+
+    for (let i=-Math.floor(brush.size); i<=Math.floor(brush.size); i++){
+        for (let j=-Math.floor(brush.size); j<=Math.floor(brush.size); j++){
+
+            if (/*brush.override(clickX+i,clickY+j) &&*/ brush.shape(i,j) && e.buttons == 1) {
+                
+                pixelGrid.setPixel(clickX+i, clickY+j, hslToRgb(brush.iter, 1, .5) & 0xFFFFFF);
+                brush.iter+=1/30000;
+                brush.iter%=1;
+
+            } else if (brush.shape(i,j) && e.buttons == 2) {
+                pixelGrid.setPixel(clickX+i, clickY+j, 0);
+            }
+        }
+    }
+    
+    requestAnimationFrame(()=>draw(e));
+}
+
+
+canvasElement.addEventListener("mousemove", (e)=>{
+    relMouseCoord.x = e.offsetX;
+    relMouseCoord.y = e.offsetY;
+})
+
+let isMouseDown = false;
+canvasElement.addEventListener("mousedown", (e) => {e.preventDefault(); isMouseDown = true; draw(e)});
+canvasElement.addEventListener("mouseup", () => {isMouseDown = false});
+
+canvasElement.addEventListener("wheel", (e)=>{
+    if (brush.size >= 1 || e.deltaY > 0 ) {
+        console.log(e.deltaY)
+        brush.size += e.deltaY/333
+    }
+})
 
 window.addEventListener("keydown",(e)=>{
     if (e.key == " ") {draining = true}
