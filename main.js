@@ -120,7 +120,7 @@ const brush = {
     iter : 0
 }
 
-brush.shape = brush.shapes.star;
+// brush.shape = brush.shapes.star;
 
 let relMouseCoord = {x: 0, y: 0}
 
@@ -134,7 +134,7 @@ function draw (e) {
     for (let i=-Math.floor(brush.size); i<=Math.floor(brush.size); i++){
         for (let j=-Math.floor(brush.size); j<=Math.floor(brush.size); j++){
 
-            if (/*brush.override(clickX+i,clickY+j) &&*/ brush.shape(i,j) && e.buttons == 1) {
+            if (brush.override(clickX+i,clickY+j) && brush.shape(i,j) && e.buttons == 1) {
                 
                 pixelGrid.setPixel(clickX+i, clickY+j, hslToRgb(brush.iter, 1, .5) & 0xFFFFFF);
                 brush.iter+=1/30000;
